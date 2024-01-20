@@ -43,22 +43,32 @@ interface LineRange {
   end: number;
 }
 
-const cachedLineRanges = new Array<LineRange>();
+const cachedLines = new Set<number>();
 
 function addLineRange(lineRange: LineRange) {
-  cachedLineRanges.push(lineRange);
+  const newRange = new Array<number>();
+  for(let i = lineRange.start; i <= lineRange.end; i++) {
+    newRange.push(i);
+  }
+
+  const linesToAdd = [...newRange].filter(x => !cachedLines.has(x));
+
+  for(const line of linesToAdd) {
+    cachedLines.add(line);
+  }
+
+  return [Math.min(...linesToAdd), Math.max(...linesToAdd)];
 }
 
 // TODO: optimize
-function isLineInCachedRange(line: number) {
-  for(let i = 0; i < cachedLineRanges.length; i++) {
-    const lineRange = cachedLineRanges[i];
-    if(lineRange.start <= line && lineRange.end >= line) {
-      return true;
+function isContextCached(range: LineRange) {
+  for(let i = range.start; i <= range.end; i++) {
+    if(!cachedLines.has(i)) {
+      return false;
     }
   }
 
-  return false;
+  return true;
 }
 
 function newAnnotationDecoration(text: string, lineLength: number, maxLineLength: number) {
@@ -88,7 +98,7 @@ function getLongestLineLength(editor: vscode.TextEditor) {
   return Math.max(...lengths);
 }
 
-function getContextFor(line: number, editor: vscode.TextEditor) {
+function getContextLineRange(line: number, editor: vscode.TextEditor) {
   const totalLines = numberOfLinesBefore + numberOfLinesAfter + 1;
 
   let firstLine = Math.max(line - numberOfLinesBefore, 0);
@@ -101,13 +111,18 @@ function getContextFor(line: number, editor: vscode.TextEditor) {
     firstLine = Math.max(editor.document.lineCount - totalLines, 0);
   }
 
+  return {start: firstLine, end: lastLine};
+}
+
+function getContextFor(lineRange: LineRange, editor: vscode.TextEditor) {
   const lines = []
-  for(let i = firstLine; i < lastLine; i++) {
+
+  for(let i = lineRange.start; i <= lineRange.end; i++) {
     const {text} = editor.document.lineAt(i);
     lines.push(text);
   }
 
-  return {text: lines.join("\n"), begin: firstLine, end: lastLine};
+  return lines.join("\n");
 }
 
 async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent) {
@@ -119,19 +134,20 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
   const maxLineLength = getLongestLineLength(editor);
   const currentLine = editor.selection.active.line;
 
-  if(isLineInCachedRange(currentLine)) {
+  const contextRange = getContextLineRange(currentLine, editor);
+  if(isContextCached(contextRange)) {
     return;
   }
 
-  const { text:codeString, begin, end} = getContextFor(currentLine, editor);
+  const codeString = getContextFor(contextRange, editor);
 
-  addLineRange({start: begin, end: end});
+  const [effectiveBegin, effectiveEnd] = addLineRange({start: contextRange.start, end: contextRange.end});
 
   const rawAnnotation = await fetchAnnotations(codeString);
   const parsedAnnotation = parseAnnotations(rawAnnotation!);
 
-  for(let line = begin; line < end; line++) {
-    const curLineInParsed = line - begin;
+  for(let line = effectiveBegin; line <= effectiveEnd; line++) {
+    const curLineInParsed = line - effectiveBegin;
     const annotationForCurLine = parsedAnnotation[curLineInParsed];
     const range = editor.document.lineAt(line).range;
     const annotationDecoration = newAnnotationDecoration(annotationForCurLine, range.end.character, maxLineLength);
