@@ -49,8 +49,6 @@ function newAnnotationDecoration(text: string) {
   return annotationDecoration;
 }
 
-let curTextEditorDecorationType: vscode.TextEditorDecorationType | undefined = undefined
-
 function getContextFor(line: number, editor: vscode.TextEditor) {
   const numberOfLinesBefore = 5;
   const numberOfLinesAfter = 5;
@@ -79,35 +77,26 @@ function getContextFor(line: number, editor: vscode.TextEditor) {
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   vscode.window.onDidChangeTextEditorSelection(async (e) => {
-    // console.log('selection', e)
 
     const editor = vscode.window.activeTextEditor;
-    if (editor) {
-        const currentLine = editor.selection.active.line;
-        const range = editor.document.lineAt(currentLine).range;
+    if (!editor) {
+      return;
+    }
 
-        if(curTextEditorDecorationType) {
-          curTextEditorDecorationType.dispose();
-        }
+    const currentLine = editor.selection.active.line;
+    const { text:codeString, begin, end} = getContextFor(currentLine, editor);
 
+    const rawAnnotation = await fetchAnnotations(codeString);
+    const parsedAnnotation = parseAnnotations(rawAnnotation!);
 
+    for(let line = begin; line < end; line++) {
 
-        const { text:codeString, begin, end} = getContextFor(currentLine, editor);
-        console.log(codeString);
+      const curLineInParsed = line - begin;
+      const annotationForCurLine = parsedAnnotation[curLineInParsed];
+      const annotationDecoration = newAnnotationDecoration(annotationForCurLine);
+      const range = editor.document.lineAt(line).range;
 
-        const rawAnnotation = await fetchAnnotations(codeString);
-        const parsedAnnotation = parseAnnotations(rawAnnotation!);
-        const parsedCurLine = currentLine - begin;
-        const annotationForCurLine = parsedAnnotation[parsedCurLine];
-        // console.log(`begin: ${begin}, end: ${end}, currentLine: ${parsedCurLine}`)
-        // console.log(`rawAnnotation: [\n${rawAnnotation}\n]`)
-        // console.log(`CurLine: [\n${currentLine - begin}\n]`)
-        // console.log(`annotationForCurLine: [\n${annotationForCurLine}\n]`)
-        // console.log("parsedAnnotation: ", parsedAnnotation)
-        const annotationDecoration = newAnnotationDecoration(annotationForCurLine);
-
-        editor.setDecorations(annotationDecoration, [range]);
-        curTextEditorDecorationType = annotationDecoration;
+      editor.setDecorations(annotationDecoration, [range]);
     }
   })
 }
