@@ -66,7 +66,7 @@ function getAnnotationFor(docUri: string, line: number) {
   return annatationsForDoc.get(line);
 }
 
-function deleteAnnotationFor(docUri: string, line: number) {\
+function deleteAnnotationFor(docUri: string, line: number) {
   if(!annatations.has(docUri)) {
     return;
   }
