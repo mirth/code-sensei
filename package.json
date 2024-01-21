@@ -1,19 +1,60 @@
 {
-  "name": "annotator",
-  "displayName": "annotator",
-  "description": "",
+  "name": "code-sensei",
+  "displayName": "Code Sensei",
+  "publisher": "Hessdalen Lights",
+  "description": "Natural language code annotations",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:mirth/code-sensei.git"
+  },
+  "license": "MIT",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other"
+    "Machine Learning",
+    "Programming Languages"
   ],
+  "keywords": ["Natural Language Annotations", "Code Explanation", "Interactive Coding Assistant", "Programming Language Learning", "Real-Time Code Analysis"],
+  "pricing": "Free",
+  "icon": "icon.png",
   "activationEvents": [
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
-  "contributes": {},
+  "contributes": {
+    "configuration": {
+      "title": "Code Sensei",
+      "properties": {
+        "code-sensei.openaiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API key"
+        },
+        "code-sensei.openaiModel": {
+          "type": "string",
+          "default": "gpt-4",
+          "description": "OpenAI model"
+        },
+        "code-sensei.openaiTemperature": {
+          "type": "number",
+          "default": 0.7,
+          "description": "OpenAI temperature"
+        },
+        "code-sensei.numberOfLinesBefore": {
+          "type": "number",
+          "default": 5,
+          "description": "Number of lines before selected line to include in prompt"
+        },
+        "code-sensei.numberOfLinesAfter": {
+          "type": "number",
+          "default": 5,
+          "description": "Number of lines after selected line to include in prompt"
+        }
+      }
+    }
+  },
   "scripts": {
     "vscode:prepublish": "yarn run compile",
     "compile": "tsc -p ./",

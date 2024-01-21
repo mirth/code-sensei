@@ -2,12 +2,32 @@ import * as vscode from 'vscode';
 import OpenAI from "openai";
 import { Buffer } from "buffer";
 
-const openai = new OpenAI({apiKey: ""});
+let openaiApiKey: string;
+let openaiModel: string;
+let openaiTemperature: number;
+let numberOfLinesBefore: number;
+let numberOfLinesAfter: number;
+
+function updateVSConfig() {
+  const config = vscode.workspace.getConfiguration("code-sensei");
+
+  openaiApiKey = config.get("openaiApiKey") as string || "";
+  openaiModel = config.get("openaiModel") as string || "gpt-4";
+  openaiTemperature = config.get("openaiTemperature") as number || 0.7;
+  numberOfLinesBefore = config.get("numberOfLinesBefore") as number || 5;
+  numberOfLinesAfter = config.get("numberOfLinesAfter") as number || 5;
+}
+
+updateVSConfig();
+vscode.workspace.onDidChangeConfiguration(updateVSConfig);
+
+function openaiApi() {
+  return new OpenAI({apiKey: openaiApiKey});
+}
 
 let systemPrompt = "QWN0IGxpa2UgYSBwcm9mZXNzaW9uYWwgcHJvZ3JhbW1lciBhbmQgY29kaW5nIHR1dG9yLgpJJ2xsIHNlbmQgeW91IE4gbGluZXMgb2YgY29kZTsgeW91IG5lZWQgdG8gcmV0dXJuIGV4YWN0bHkgTiBsaW5lcyBvZiBjb21tZW50cy4gRWFjaCBvdXRwdXQgbGluZSBzaG91bGQgYmUgYW4gZXhwbGFuYXRpb24gZm9yIHRoZSBjb3JyZXNwb25kaW5nIGlucHV0IGxpbmUuIEJlIGNvbmNpc2U7IGRvIG5vdCB1c2UgbW9yZSB0aGFuIHR3byBzZW50ZW5jZXMgZm9yIGFuIGV4cGxhbmF0aW9uLgpEbyBub3QgcmV0dXJuIGFueXRoaW5nIGVsc2UuCgpFeGFtcGxlIGlucHV0OgpgYGAKMSQgZGVmIHN1bShhLCBiKToKMiQgICIiInRoaXMgZnVuY3Rpb24gYWRkcyBhIGFuZCBiIiIiCjMkICAgIHJldHVybiBhK2IKYGBgCkV4YW1wbGUgb3V0cHV0OgpgYGAKMSQgVGhlIGZ1bmN0aW9uIGRlZmluaXRpb24uIEZ1bmN0aW9uIHN1bSB0YWtlcyB0d28gaW5wdXQgdmFyaWFibGVzOiBhIGFuZCBiCjIkIFRoZSBkb2NzdHJpbmcgZm9yIHRoZSBmdW5jdGlvbi4KMyQgVGhlIG91dHB1dCBvZiB0aGUgZnVuY3Rpb24uIEZ1bmN0aW9uIHN1bSByZXR1cm5zIGErYgpgYGA=";
-systemPrompt = Buffer.from(systemPrompt, 'base64').toString('binary')
-const numberOfLinesBefore = 5;
-const numberOfLinesAfter = 5;
+systemPrompt = Buffer.from(systemPrompt, 'base64').toString('binary');
+
 let IS_FETCHING_ANNOTATION = false;
 
 function newUserPrompt(codeString: string) {
@@ -18,16 +38,15 @@ function newUserPrompt(codeString: string) {
 
 async function fetchAnnotations(codeString: string) {
   const userPrompt = newUserPrompt(codeString);
-  console.log(`prompt: [\n${[userPrompt]}\n]`)
 
   IS_FETCHING_ANNOTATION = true;
-  const completion = await openai.chat.completions.create({
+  const completion = await openaiApi().chat.completions.create({
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
     ],
-    model: "gpt-4",
-    // model: "gpt-3.5-turbo",
+    model: openaiModel,
+    temperature: openaiTemperature,
   });
   IS_FETCHING_ANNOTATION = false;
 
@@ -38,7 +57,7 @@ function parseAnnotations(annotationsString: string) {
   return annotationsString.split("\n").map((line) => {
     const annotation = line.slice(line.indexOf(" ") + 1);
     return annotation;
-  })
+  });
 }
 
 interface LineRange {
