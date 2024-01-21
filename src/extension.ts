@@ -46,9 +46,15 @@ interface LineRange {
   end: number;
 }
 
-const cachedLines = new Set<number>();
+const annatations = new Map<number, vscode.TextEditorDecorationType>();
 
-function addLineRange(lineRange: LineRange) {
+function getCachedLines() {
+  return new Set([...annatations.keys()]);
+}
+
+function getEffectiveLineRange(lineRange: LineRange) {
+  const cachedLines = getCachedLines();
+
   const newRange = new Array<number>();
   for(let i = lineRange.start; i <= lineRange.end; i++) {
     newRange.push(i);
@@ -56,15 +62,13 @@ function addLineRange(lineRange: LineRange) {
 
   const linesToAdd = [...newRange].filter(x => !cachedLines.has(x));
 
-  for(const line of linesToAdd) {
-    cachedLines.add(line);
-  }
-
   return [Math.min(...linesToAdd), Math.max(...linesToAdd)];
 }
 
 // TODO: optimize
 function isContextCached(range: LineRange) {
+  const cachedLines = getCachedLines();
+
   for(let i = range.start; i <= range.end; i++) {
     if(!cachedLines.has(i)) {
       return false;
@@ -148,7 +152,7 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
 
   const codeString = getContextFor(contextRange, editor);
 
-  const [effectiveBegin, effectiveEnd] = addLineRange({start: contextRange.start, end: contextRange.end});
+  const [effectiveBegin, effectiveEnd] = getEffectiveLineRange({start: contextRange.start, end: contextRange.end});
 
   const rawAnnotation = await fetchAnnotations(codeString);
   const parsedAnnotation = parseAnnotations(rawAnnotation!);
@@ -161,13 +165,40 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
     const annotationDecoration = newAnnotationDecoration(annotationForCurLine, range.end.character, maxLineLength);
 
     editor.setDecorations(annotationDecoration, [range]);
+    annatations.set(line, annotationDecoration);
   }
+}
+
+function handleDidChangeTextDocument(e: vscode.TextDocumentChangeEvent) {
+  for (const change of e.contentChanges) {
+    let startLine = change.range.start.line;
+    let endLine = change.range.end.line;
+
+    const editor = vscode.window.activeTextEditor;
+
+    if (!editor || editor.document !== e.document) {
+      continue;
+    }
+
+    for (let i = startLine; i <= endLine; i++) {
+      const annotationDecoration = annatations.get(i);
+      if (annotationDecoration === undefined) {
+        continue;
+      }
+      editor.setDecorations(annotationDecoration, []);
+      annatations.delete(i);
+    }
+}
 }
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  vscode.window.onDidChangeTextEditorSelection(handleDidChangeTextEditorSelection)
+  let disposable = vscode.window.onDidChangeTextEditorSelection(handleDidChangeTextEditorSelection);
+  context.subscriptions.push(disposable);
+
+  disposable = vscode.workspace.onDidChangeTextDocument(handleDidChangeTextDocument);
+  context.subscriptions.push(disposable);
 }
 
 // This method is called when your extension is deactivated
