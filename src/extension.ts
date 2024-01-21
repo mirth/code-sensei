@@ -154,7 +154,7 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
   const maxLineLength = getLongestLineLength(editor);
 
   for(let line = effectiveBegin; line <= effectiveEnd; line++) {
-    const curLineInParsed = line - effectiveBegin;
+    const curLineInParsed = line - contextRange.start;
     const annotationForCurLine = parsedAnnotation[curLineInParsed];
     const range = editor.document.lineAt(line).range;
     const annotationDecoration = newAnnotationDecoration(annotationForCurLine, range.end.character, maxLineLength);
