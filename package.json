@@ -1,7 +1,7 @@
 {
   "name": "code-sensei",
   "displayName": "Code Sensei",
-  "publisher": "Hessdalen Lights",
+  "publisher": "HessdalenLights",
   "description": "Natural language code annotations",
   "repository": {
     "type": "git",
