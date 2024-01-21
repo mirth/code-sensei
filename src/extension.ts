@@ -8,6 +8,7 @@ let systemPrompt = "QWN0IGxpa2UgYSBwcm9mZXNzaW9uYWwgcHJvZ3JhbW1lciBhbmQgY29kaW5n
 systemPrompt = Buffer.from(systemPrompt, 'base64').toString('binary')
 const numberOfLinesBefore = 5;
 const numberOfLinesAfter = 5;
+let IS_FETCHING_ANNOTATION = false;
 
 function newUserPrompt(codeString: string) {
   return codeString.split("\n").map((line, lineNumber) => {
@@ -19,14 +20,16 @@ async function fetchAnnotations(codeString: string) {
   const userPrompt = newUserPrompt(codeString);
   console.log(`prompt: [\n${[userPrompt]}\n]`)
 
+  IS_FETCHING_ANNOTATION = true;
   const completion = await openai.chat.completions.create({
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
     ],
-    // model: "gpt-4",
-    model: "gpt-3.5-turbo",
+    model: "gpt-4",
+    // model: "gpt-3.5-turbo",
   });
+  IS_FETCHING_ANNOTATION = false;
 
   return completion.choices[0].message.content;
 }
@@ -131,7 +134,10 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
     return;
   }
 
-  const maxLineLength = getLongestLineLength(editor);
+  if (IS_FETCHING_ANNOTATION) {
+    return;
+  }
+
   const currentLine = editor.selection.active.line;
 
   const contextRange = getContextLineRange(currentLine, editor);
@@ -145,6 +151,7 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
 
   const rawAnnotation = await fetchAnnotations(codeString);
   const parsedAnnotation = parseAnnotations(rawAnnotation!);
+  const maxLineLength = getLongestLineLength(editor);
 
   for(let line = effectiveBegin; line <= effectiveEnd; line++) {
     const curLineInParsed = line - effectiveBegin;
