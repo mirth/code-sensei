@@ -156,7 +156,7 @@ function getContextLineRange(line: number, editor: vscode.TextEditor) {
 }
 
 function getContextFor(lineRange: LineRange, editor: vscode.TextEditor) {
-  const lines = []
+  const lines = [];
 
   for(let i = lineRange.start; i <= lineRange.end; i++) {
     const {text} = editor.document.lineAt(i);
@@ -194,8 +194,14 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
 
   for(let line = effectiveBegin; line <= effectiveEnd; line++) {
     const curLineInParsed = line - contextRange.start;
-    const annotationForCurLine = parsedAnnotation[curLineInParsed];
+    let annotationForCurLine = parsedAnnotation[curLineInParsed];
     const range = editor.document.lineAt(line).range;
+
+    const isEmptyLine = editor.document.lineAt(line).text.trim() === "";
+    if(isEmptyLine) {
+      annotationForCurLine = "";
+    }
+
     const annotationDecoration = newAnnotationDecoration(annotationForCurLine, range.end.character, maxLineLength);
 
     editor.setDecorations(annotationDecoration, [range]);
