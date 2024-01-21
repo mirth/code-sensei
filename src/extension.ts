@@ -46,14 +46,47 @@ interface LineRange {
   end: number;
 }
 
-const annatations = new Map<number, vscode.TextEditorDecorationType>();
+const annatations = new Map<string, Map<number, vscode.TextEditorDecorationType>>();
 
-function getCachedLines() {
-  return new Set([...annatations.keys()]);
+function setAnnotationFor(docUri: string, line: number, annotation: vscode.TextEditorDecorationType) {
+  if(!annatations.has(docUri)) {
+    annatations.set(docUri, new Map<number, vscode.TextEditorDecorationType>());
+  }
+
+  const annatationsForDoc = annatations.get(docUri)!;
+  annatationsForDoc.set(line, annotation);
 }
 
-function getEffectiveLineRange(lineRange: LineRange) {
-  const cachedLines = getCachedLines();
+function getAnnotationFor(docUri: string, line: number) {
+  if(!annatations.has(docUri)) {
+    return undefined;
+  }
+
+  const annatationsForDoc = annatations.get(docUri)!;
+  return annatationsForDoc.get(line);
+}
+
+function deleteAnnotationFor(docUri: string, line: number) {\
+  if(!annatations.has(docUri)) {
+    return;
+  }
+
+  const annatationsForDoc = annatations.get(docUri)!;
+  annatationsForDoc.delete(line);
+}
+
+function getCachedLinesFor(docUri: string) {
+  if(!annatations.has(docUri)) {
+    return new Set<number>();
+  }
+
+  const annatationsForDoc = annatations.get(docUri)!;
+
+  return new Set([...annatationsForDoc.keys()]);
+}
+
+function getEffectiveLineRange(docUri: string, lineRange: LineRange) {
+  const cachedLines = getCachedLinesFor(docUri);
 
   const newRange = new Array<number>();
   for(let i = lineRange.start; i <= lineRange.end; i++) {
@@ -66,8 +99,8 @@ function getEffectiveLineRange(lineRange: LineRange) {
 }
 
 // TODO: optimize
-function isContextCached(range: LineRange) {
-  const cachedLines = getCachedLines();
+function isContextCached(docUri: string, range: LineRange) {
+  const cachedLines = getCachedLinesFor(docUri);
 
   for(let i = range.start; i <= range.end; i++) {
     if(!cachedLines.has(i)) {
@@ -79,7 +112,7 @@ function isContextCached(range: LineRange) {
 }
 
 function newAnnotationDecoration(text: string, lineLength: number, maxLineLength: number) {
-  const numberOfSpaces = maxLineLength - lineLength
+  const numberOfSpaces = maxLineLength - lineLength;
   const margin = " ".repeat(numberOfSpaces);
   text = `${margin}${text}`;
 
@@ -144,15 +177,16 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
   }
 
   const currentLine = editor.selection.active.line;
-
   const contextRange = getContextLineRange(currentLine, editor);
-  if(isContextCached(contextRange)) {
+  const docUri = editor.document.uri.toString();
+
+  if(isContextCached(docUri, contextRange)) {
     return;
   }
 
   const codeString = getContextFor(contextRange, editor);
 
-  const [effectiveBegin, effectiveEnd] = getEffectiveLineRange({start: contextRange.start, end: contextRange.end});
+  const [effectiveBegin, effectiveEnd] = getEffectiveLineRange(docUri, {start: contextRange.start, end: contextRange.end});
 
   const rawAnnotation = await fetchAnnotations(codeString);
   const parsedAnnotation = parseAnnotations(rawAnnotation!);
@@ -165,7 +199,7 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
     const annotationDecoration = newAnnotationDecoration(annotationForCurLine, range.end.character, maxLineLength);
 
     editor.setDecorations(annotationDecoration, [range]);
-    annatations.set(line, annotationDecoration);
+    setAnnotationFor(docUri, line, annotationDecoration);
   }
 }
 
@@ -179,17 +213,37 @@ function handleDidChangeTextDocument(e: vscode.TextDocumentChangeEvent) {
     if (!editor || editor.document !== e.document) {
       continue;
     }
+    const docUri = editor.document.uri.toString();
 
     for (let i = startLine; i <= endLine; i++) {
-      const annotationDecoration = annatations.get(i);
+      const annotationDecoration = getAnnotationFor(docUri, i);
       if (annotationDecoration === undefined) {
         continue;
       }
       editor.setDecorations(annotationDecoration, []);
-      annatations.delete(i);
+      deleteAnnotationFor(docUri, i);
     }
+  }
 }
+
+function handleDidchangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
+  if (editor === undefined) {
+    return;
+  }
+
+  const docUri = editor.document.uri.toString();
+  const cachedLines = getCachedLinesFor(docUri);
+  for (const line of cachedLines) {
+    const annotationDecoration = getAnnotationFor(docUri, line);
+    if (annotationDecoration === undefined) {
+      continue;
+    }
+
+    const range = editor.document.lineAt(line).range;
+    editor.setDecorations(annotationDecoration, [range]);
+  }
 }
+
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -198,6 +252,9 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 
   disposable = vscode.workspace.onDidChangeTextDocument(handleDidChangeTextDocument);
+  context.subscriptions.push(disposable);
+
+  disposable = vscode.window.onDidChangeActiveTextEditor(handleDidchangeActiveTextEditor);
   context.subscriptions.push(disposable);
 }
 
