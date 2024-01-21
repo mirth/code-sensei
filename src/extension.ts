@@ -82,7 +82,8 @@ function newAnnotationDecoration(text: string, lineLength: number, maxLineLength
   const annotationDecoration = vscode.window.createTextEditorDecorationType({
     after: {
       margin: '0 0 0 3em',
-      textDecoration: "none; white-space: pre",
+      textDecoration: "none; white-space: pre; opacity: 0.5;",
+      fontStyle: "italic",
       contentText: text,
     },
   });
