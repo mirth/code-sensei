@@ -2,13 +2,13 @@
   "name": "code-sensei",
   "displayName": "Code Sensei",
   "publisher": "HessdalenLights",
-  "description": "Natural language code annotations",
+  "description": "Natural language code annotation",
   "repository": {
     "type": "git",
     "url": "git@github.com:mirth/code-sensei.git"
   },
   "license": "MIT",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.85.0"
   },

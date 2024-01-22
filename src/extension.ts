@@ -147,10 +147,16 @@ function newAnnotationDecoration(text: string, lineLength: number, maxLineLength
   return annotationDecoration;
 }
 
-function getLongestLineLength(editor: vscode.TextEditor) {
+function getLongestLineLengthForContext(editor: vscode.TextEditor, line: number) {
+  const linesBefore = 10;
+  const linesAfter = 10;
+
   const lengths: Array<number> = [];
 
-  for(let i = 0; i < editor.document.lineCount; i++) {
+  const firstLine = Math.max(line - linesBefore, 0);
+  const lastLine = Math.min(line + linesAfter, editor.document.lineCount - 1);
+
+  for(let i = firstLine; i <= lastLine; i++) {
     const range = editor.document.lineAt(i).range;
     lengths.push(range.end.character);
   }
@@ -209,7 +215,7 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
 
   const rawAnnotation = await fetchAnnotations(codeString);
   const parsedAnnotation = parseAnnotations(rawAnnotation!);
-  const maxLineLength = getLongestLineLength(editor);
+  const maxLineLength = getLongestLineLengthForContext(editor, currentLine);
 
   for(let line = effectiveBegin; line <= effectiveEnd; line++) {
     const curLineInParsed = line - contextRange.start;
