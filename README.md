@@ -3,6 +3,8 @@
 
 This VSCode extension annotates code line by line in natural language.
 
+You can install this extension from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=HessdalenLights.code-sensei)
+
 ![Example of Code Sensei vscode extension work. It annotates code.](https://raw.githubusercontent.com/mirth/code-sensei/main/example0.png)
 
 ## 🚀 Getting Started
