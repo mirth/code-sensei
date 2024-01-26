@@ -54,10 +54,23 @@ async function fetchAnnotations(codeString: string) {
 }
 
 function parseAnnotations(annotationsString: string) {
-  return annotationsString.split("\n").map((line) => {
-    const annotation = line.slice(line.indexOf(" ") + 1);
-    return annotation;
-  });
+  const lines = annotationsString.split("\n");
+  const annotations = new Map<number, string>();
+
+  for(let line of lines) {
+    line = line.trim();
+
+    if (!line.startsWith("$")) {
+      continue;
+    }
+
+    const firstSpace = line.indexOf(" ");
+    const lineNumber = parseInt(line.slice(1, firstSpace));
+
+    annotations.set(lineNumber, line.slice(firstSpace).trim());
+  }
+
+  return annotations;
 }
 
 interface LineRange {
@@ -219,7 +232,11 @@ async function handleDidChangeTextEditorSelection(e: vscode.TextEditorSelectionC
 
   for(let line = effectiveBegin; line <= effectiveEnd; line++) {
     const curLineInParsed = line - contextRange.start;
-    let annotationForCurLine = parsedAnnotation[curLineInParsed];
+    if (!parsedAnnotation.has(curLineInParsed)) {
+      continue;
+    }
+
+    let annotationForCurLine = parsedAnnotation.get(curLineInParsed)!;
     const range = editor.document.lineAt(line).range;
 
     const isEmptyLine = editor.document.lineAt(line).text.trim() === "";

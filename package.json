@@ -8,7 +8,7 @@
     "url": "git@github.com:mirth/code-sensei.git"
   },
   "license": "MIT",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -34,7 +34,7 @@
         },
         "code-sensei.openaiModel": {
           "type": "string",
-          "default": "gpt-4",
+          "default": "gpt-4-turbo-preview",
           "description": "OpenAI model"
         },
         "code-sensei.openaiTemperature": {
