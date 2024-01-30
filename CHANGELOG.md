@@ -1,9 +1,11 @@
-# Change Log
+# Changelog
 
-All notable changes to the "annotator" extension will be documented in this file.
+## [0.0.5] - 2024-01-30
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+### Added
 
-## [Unreleased]
+- Annotation language setting
 
-- Initial release
+### Changed
+
+- System prompt moved into separate txt file

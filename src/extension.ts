@@ -1,12 +1,16 @@
 import * as vscode from 'vscode';
 import OpenAI from "openai";
 import { Buffer } from "buffer";
+import path from 'path';
+import fs from 'node:fs';
+
 
 let openaiApiKey: string;
 let openaiModel: string;
 let openaiTemperature: number;
 let numberOfLinesBefore: number;
 let numberOfLinesAfter: number;
+let annotationLanguage: string;
 
 function updateVSConfig() {
   const config = vscode.workspace.getConfiguration("code-sensei");
@@ -16,6 +20,7 @@ function updateVSConfig() {
   openaiTemperature = config.get("openaiTemperature") as number || 0.7;
   numberOfLinesBefore = config.get("numberOfLinesBefore") as number || 5;
   numberOfLinesAfter = config.get("numberOfLinesAfter") as number || 5;
+  annotationLanguage = config.get("annotationLanguage") as string || "English";
 }
 
 updateVSConfig();
@@ -25,8 +30,14 @@ function openaiApi() {
   return new OpenAI({apiKey: openaiApiKey});
 }
 
-let systemPrompt = "QWN0IGxpa2UgYSBwcm9mZXNzaW9uYWwgcHJvZ3JhbW1lciBhbmQgY29kaW5nIHR1dG9yLgpJJ2xsIHNlbmQgeW91IE4gbGluZXMgb2YgY29kZTsgeW91IG5lZWQgdG8gcmV0dXJuIGV4YWN0bHkgTiBsaW5lcyBvZiBjb21tZW50cy4gRWFjaCBvdXRwdXQgbGluZSBzaG91bGQgYmUgYW4gZXhwbGFuYXRpb24gZm9yIHRoZSBjb3JyZXNwb25kaW5nIGlucHV0IGxpbmUuIEJlIGNvbmNpc2U7IGRvIG5vdCB1c2UgbW9yZSB0aGFuIHR3byBzZW50ZW5jZXMgZm9yIGFuIGV4cGxhbmF0aW9uLgpEbyBub3QgcmV0dXJuIGFueXRoaW5nIGVsc2UuCgpFeGFtcGxlIGlucHV0OgpgYGAKMSQgZGVmIHN1bShhLCBiKToKMiQgICIiInRoaXMgZnVuY3Rpb24gYWRkcyBhIGFuZCBiIiIiCjMkICAgIHJldHVybiBhK2IKYGBgCkV4YW1wbGUgb3V0cHV0OgpgYGAKMSQgVGhlIGZ1bmN0aW9uIGRlZmluaXRpb24uIEZ1bmN0aW9uIHN1bSB0YWtlcyB0d28gaW5wdXQgdmFyaWFibGVzOiBhIGFuZCBiCjIkIFRoZSBkb2NzdHJpbmcgZm9yIHRoZSBmdW5jdGlvbi4KMyQgVGhlIG91dHB1dCBvZiB0aGUgZnVuY3Rpb24uIEZ1bmN0aW9uIHN1bSByZXR1cm5zIGErYgpgYGA=";
-systemPrompt = Buffer.from(systemPrompt, 'base64').toString('binary');
+function makeSystemPrompt(annotationLanguage: string) {
+  const extensionPath = vscode.extensions.getExtension('HessdalenLights.code-sensei')!.extensionUri.path;
+  const promptPath = path.join(extensionPath, 'src', 'prompt.txt');
+  let prompt = fs.readFileSync(promptPath, 'utf8');
+  prompt = prompt.replace(/{{LANGUAGE}}/g, annotationLanguage);
+
+  return prompt;
+}
 
 let IS_FETCHING_ANNOTATION = false;
 
@@ -40,6 +51,8 @@ async function fetchAnnotations(codeString: string) {
   const userPrompt = newUserPrompt(codeString);
 
   IS_FETCHING_ANNOTATION = true;
+
+  const systemPrompt = makeSystemPrompt(annotationLanguage);
   const completion = await openaiApi().chat.completions.create({
     messages: [
       { role: "system", content: systemPrompt },

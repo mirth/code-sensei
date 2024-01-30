@@ -8,7 +8,7 @@
     "url": "git@github.com:mirth/code-sensei.git"
   },
   "license": "MIT",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -51,6 +51,11 @@
           "type": "number",
           "default": 5,
           "description": "Number of lines after selected line to include in prompt"
+        },
+        "code-sensei.annotationLanguage": {
+          "type": "string",
+          "default": "English",
+          "description": "The name of annotation language"
         }
       }
     }
