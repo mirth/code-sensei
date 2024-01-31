@@ -32,7 +32,7 @@ function openaiApi() {
 
 function makeSystemPrompt(annotationLanguage: string) {
   const extensionPath = vscode.extensions.getExtension('HessdalenLights.code-sensei')!.extensionUri.path;
-  const promptPath = path.join(extensionPath, 'src', 'prompt.txt');
+  const promptPath = path.join(extensionPath, 'prompt.txt');
   let prompt = fs.readFileSync(promptPath, 'utf8');
   prompt = prompt.replace(/{{LANGUAGE}}/g, annotationLanguage);
 

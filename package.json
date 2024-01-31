@@ -8,7 +8,7 @@
     "url": "git@github.com:mirth/code-sensei.git"
   },
   "license": "MIT",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "engines": {
     "vscode": "^1.85.0"
   },
